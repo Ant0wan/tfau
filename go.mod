@@ -1,4 +1,4 @@
-module github.com/ant0wan/tfau
+module tfau
 
 go 1.23.5
 
