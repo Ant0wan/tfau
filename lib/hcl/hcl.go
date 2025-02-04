@@ -2,7 +2,7 @@ package hcl
 
 import (
 	"fmt"
-		"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty"
 	"io/ioutil"
 
 	"tfau/lib/module"
@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 )
-
 
 func UpdateVersionInFile(filename string) error {
 	parser := hclparse.NewParser()

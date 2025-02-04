@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"tfau/lib/hcl"
-	"tfau/lib/module"
 )
 
 func main() {

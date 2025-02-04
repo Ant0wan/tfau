@@ -2,11 +2,10 @@ package module
 
 import (
 	"encoding/json"
-	"net/http"
-	"io/ioutil"
-	"strings"
 	"fmt"
-
+	"io/ioutil"
+	"net/http"
+	"strings"
 )
 
 type ModuleInfo struct {
