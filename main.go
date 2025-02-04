@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"tfau/lib"
+	"tfau/lib/hcl"
+	"tfau/lib/module"
 )
 
 func main() {

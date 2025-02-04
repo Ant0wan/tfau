@@ -5,7 +5,7 @@ import (
 		"github.com/zclconf/go-cty/cty"
 	"io/ioutil"
 
-	"tfau/module"
+	"tfau/lib/module"
 
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
