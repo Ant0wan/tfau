@@ -1,20 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"tfau/lib/hcl"
+	"log"
+	"tfau/cmd"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run main.go <terraform_file.tf>")
-		return
-	}
-
-	filename := os.Args[1]
-	if err := hcl.UpdateVersionInFile(filename); err != nil {
-		fmt.Println("Error:", err)
+	if err := cmd.Execute(); err != nil {
+		log.Fatalf("Error: %v", err)
 	}
 }
