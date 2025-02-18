@@ -8,6 +8,8 @@ import (
 )
 
 func main() {
+	
+
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: go run main.go <terraform_file.tf>")
 		return

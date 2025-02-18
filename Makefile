@@ -12,7 +12,7 @@ run:
 test:
 	$(GO) test -v
 
-install:
+install: build
 	$(GO) install
 
 clean:
@@ -20,4 +20,4 @@ clean:
 
 fclean: clean
 
-.PHONY: all build test clean fclean
+.PHONY: all build test clean fclean install

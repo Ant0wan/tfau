@@ -3,13 +3,13 @@ package hcl
 import (
 	"fmt"
 	"github.com/zclconf/go-cty/cty"
-	"io/ioutil"
+	//"io/ioutil"
 
 	"tfau/lib/module"
 
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/hashicorp/hcl/v2/hclwrite"
+//	"github.com/hashicorp/hcl/v2/hclwrite"
 )
 
 func UpdateVersionInFile(filename string) error {
@@ -33,6 +33,7 @@ func UpdateVersionInFile(filename string) error {
 				if name == "source" {
 					sourceVal, _ := attr.Expr.Value(nil)
 					sourceValue = sourceVal.AsString()
+					fmt.Println(sourceValue)
 				}
 				if name == "version" {
 					versionAttr = attr
@@ -50,6 +51,7 @@ func UpdateVersionInFile(filename string) error {
 		}
 	}
 
-	output := hclwrite.Format([]byte(filename))
-	return ioutil.WriteFile(filename, output, 0644)
+	//output := hclwrite.Format([]byte(filename))
+	return nil
+	//return ioutil.WriteFile(filename, output, 0644)
 }
