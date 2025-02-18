@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -81,11 +80,8 @@ func processUpgrades(upgrades string) error {
 	return nil
 }
 
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
+func Execute() error {
+	return rootCmd.Execute()
 }
 
 func init() {

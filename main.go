@@ -1,9 +1,12 @@
 package main
 
 import (
+	"log"
 	"tfau/cmd"
 )
 
 func main() {
-	cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
 }
