@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 
-	//"tfau/lib/hcl"
-
 	"github.com/spf13/cobra"
 )
 
@@ -16,36 +14,49 @@ var (
 	recursive bool
 	upgrades  string
 	verbose   bool
-	providers bool
-	modules   bool
-	terraform bool
-	rootCmd   = &cobra.Command{
-		Use:   "tfau",
-		Short: " A CLI tool to easily upgrade your Terraform modules and providers.",
-		Long: `Given a Terraform project and command line parameters,
-tfau upgrade each provider, module and terraform version in place in your hcl files.`,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if len(files) == 0 { // example
-				err := cmd.Help()
-				if err != nil {
-					log.Fatal(err)
-				}
-				os.Exit(1)
-			}
-			return nil
-		},
-		//	Run: func(cmd *cobra.Command, args []string) {
-		//		scrap(addrs, format)
-		//	},
-		RunE: func(cmd *cobra.Command, args []string) error {
+	providers = true // Default to true
+	modules   = true // Default to true
+	terraform = true // Default to true
+)
+
+var rootCmd = &cobra.Command{
+	Use:   "tfau",
+	Short: "A CLI tool to easily upgrade your Terraform modules and providers.",
+	Long: `Given a Terraform project and command line parameters,
+tfau upgrades each provider, module, and Terraform version in place in your HCL files.`,
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// If no files are specified, set recursive to true
+		if len(files) == 0 {
+			recursive = true
+		}
+
+		// If upgrades are not specified, default to upgrading all (modules, providers, terraform)
+		if upgrades == "" {
+			providers = true
+			modules = true
+			terraform = true
+		} else {
+			// Process upgrades if specified
 			err := processUpgrades(upgrades)
 			if err != nil {
 				return err
 			}
-			return nil
-		},
-	}
-)
+		}
+
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Log the configuration
+		log.Println("Files:", files)
+		log.Println("Recursive:", recursive)
+		log.Println("Modules:", modules)
+		log.Println("Providers:", providers)
+		log.Println("Terraform:", terraform)
+
+		// Add your logic here to process the files and upgrades
+		return nil
+	},
+}
 
 func processUpgrades(upgrades string) error {
 	upgradesList := strings.Split(upgrades, ",")
@@ -62,13 +73,10 @@ func processUpgrades(upgrades string) error {
 		}
 	}
 
+	// If no valid upgrades are specified, return an error
 	if !modules && !providers && !terraform {
 		return errors.New("at least one upgrade type must be specified")
 	}
-
-	log.Println("Modules:", modules)
-	log.Println("Providers:", providers)
-	log.Println("Terraform:", terraform)
 
 	return nil
 }
@@ -81,6 +89,12 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().StringArrayVarP(&files, "file", "f", []string{}, "hcl file to be updated")
+	// Files flag (optional)
+	rootCmd.Flags().StringArrayVarP(&files, "file", "f", []string{}, "HCL file(s) to be updated")
+
+	// Upgrades flag (optional)
 	rootCmd.Flags().StringVar(&upgrades, "upgrades", "", "Comma-separated list of upgrades (modules, providers, terraform)")
+
+	// Verbose flag (optional)
+	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 }
