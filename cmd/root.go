@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strings"
+
+	"tfau/lib/hcl"
 
 	"github.com/spf13/cobra"
 )
@@ -51,6 +54,21 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 		log.Println("Modules:", modules)
 		log.Println("Providers:", providers)
 		log.Println("Terraform:", terraform)
+
+		if modules {
+			// Iterate over each file and parse modules
+			for _, file := range files {
+				modules, err := hcl.ParseModules(file)
+				if err != nil {
+					return fmt.Errorf("error parsing modules in file '%s': %w", file, err)
+				}
+
+				// Print the module names and versions
+				for name, version := range modules {
+					fmt.Printf("Module: %s, Version: %s\n", name, version)
+				}
+			}
+		}
 
 		// Add your logic here to process the files and upgrades
 		return nil
