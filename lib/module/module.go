@@ -1,55 +1,44 @@
 package module
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strings"
+
+	"github.com/hashicorp/hcl/v2"
 )
 
-type ModuleInfo struct {
-	Versions []struct {
-		Version string `json:"version"`
-	} `json:"modules"`
-}
+// ExtractModules extracts module names and their versions from the parsed content.
+func Extract(content *hcl.BodyContent) (map[string]string, error) {
+	// Create a map to store module names and versions
+	modules := make(map[string]string)
 
-func GetLatestVersion(source string) (string, error) {
-	parts := strings.Split(source, "/")
-	if len(parts) < 2 {
-		return "", fmt.Errorf("invalid module source format")
+	// Iterate over the blocks to find all module blocks
+	for _, block := range content.Blocks {
+		if block.Type == "module" {
+			// Get the module name
+			moduleName := block.Labels[0]
+
+			// Decode the attributes of the module block
+			attrs, diags := block.Body.JustAttributes()
+			if diags.HasErrors() {
+				return nil, fmt.Errorf("failed to decode attributes for module '%s': %s", moduleName, diags)
+			}
+
+			// Get the value of the "version" attribute
+			versionAttr, exists := attrs["version"]
+			if !exists {
+				// If the module doesn't have a "version" attribute, skip it
+				continue
+			}
+
+			versionValue, diags := versionAttr.Expr.Value(nil)
+			if diags.HasErrors() {
+				return nil, fmt.Errorf("failed to evaluate 'version' expression for module '%s': %s", moduleName, diags)
+			}
+
+			// Store the module name and version in the map
+			modules[moduleName] = versionValue.AsString()
+		}
 	}
 
-	registryURL := fmt.Sprintf("https://registry.terraform.io/v1/modules/%s/%s/%s/versions", parts[0], parts[1], parts[2])
-	resp, err := http.Get(registryURL)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to fetch version data")
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var moduleInfo ModuleInfo
-	if err := json.Unmarshal(body, &moduleInfo); err != nil {
-		return "", err
-	}
-
-	if len(moduleInfo.Versions) == 0 {
-		return "", fmt.Errorf("no versions found")
-	}
-
-	latestVersion := moduleInfo.Versions[0].Version
-	versionParts := strings.Split(latestVersion, ".")
-	if len(versionParts) < 2 {
-		return "", fmt.Errorf("invalid version format")
-	}
-
-	return fmt.Sprintf("~>%s.%s", versionParts[0], versionParts[1]), nil
+	return modules, nil
 }

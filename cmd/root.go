@@ -7,6 +7,9 @@ import (
 	"strings"
 
 	"tfau/lib/hcl"
+	"tfau/lib/module"
+	"tfau/lib/provider"
+	"tfau/lib/tf"
 
 	"github.com/spf13/cobra"
 )
@@ -55,22 +58,47 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 		log.Println("Providers:", providers)
 		log.Println("Terraform:", terraform)
 
-		if modules {
-			// Iterate over each file and parse modules
-			for _, file := range files {
-				modules, err := hcl.ParseModules(file)
-				if err != nil {
-					return fmt.Errorf("error parsing modules in file '%s': %w", file, err)
-				}
+		// Iterate over each file and parse modules
+		for _, file := range files {
+			// Parse the .tf file
+			file, err := hcl.ParseFile(file)
+			if err != nil {
+				log.Fatalf("Error parsing file: %s", err)
+			}
 
-				// Print the module names and versions
-				for name, version := range modules {
-					fmt.Printf("Module: %s, Version: %s\n", name, version)
+			// Extract the content based on the schema
+			content, diags := file.Body.Content(hcl.Schema)
+			if diags.HasErrors() {
+				log.Fatalf("Failed to decode body: %s", diags)
+			}
+
+			if modules {
+				// Extract modules
+				modules, err := module.Extract(content)
+				if err != nil {
+					log.Fatalf("Error extracting modules: %s", err)
 				}
+				fmt.Println("Modules:", modules)
+
+			}
+			if providers {
+				// Extract providers
+				providers, err := provider.Extract(content)
+				if err != nil {
+					log.Fatalf("Error extracting providers: %s", err)
+				}
+				fmt.Println("Providers:", providers)
+			}
+			if terraform {
+				// Extract Terraform version
+				terraformVersion, err := tf.Extract(content)
+				if err != nil {
+					log.Fatalf("Error extracting Terraform version: %s", err)
+				}
+				fmt.Println("Terraform Version:", terraformVersion)
 			}
 		}
 
-		// Add your logic here to process the files and upgrades
 		return nil
 	},
 }
