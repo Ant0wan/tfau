@@ -7,15 +7,15 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
-// ParseModules parses an HCL file and extracts module names and their versions.
+// ParseModules parses a .tf file and extracts module names and their versions.
 func ParseModules(filename string) (map[string]string, error) {
 	// Create a new HCL parser
 	parser := hclparse.NewParser()
 
-	// Parse the HCL file
+	// Parse the .tf file
 	file, diags := parser.ParseHCLFile(filename)
 	if diags.HasErrors() {
-		return nil, fmt.Errorf("failed to parse HCL file: %s", diags)
+		return nil, fmt.Errorf("failed to parse .tf file: %s", diags)
 	}
 
 	// Decode the body into a generic hcl.Body

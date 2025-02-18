@@ -16,9 +16,9 @@ var (
 	recursive bool
 	upgrades  string
 	verbose   bool
-	providers = true // Default to true
-	modules   = true // Default to true
-	terraform = true // Default to true
+	providers = true
+	modules   = true
+	terraform = true
 )
 
 var rootCmd = &cobra.Command{
@@ -39,7 +39,7 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 			terraform = true
 		} else {
 			// Process upgrades if specified
-			err := processUpgrades(upgrades)
+			err := parseUpgradeOption(upgrades)
 			if err != nil {
 				return err
 			}
@@ -75,7 +75,7 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 	},
 }
 
-func processUpgrades(upgrades string) error {
+func parseUpgradeOption(upgrades string) error {
 	upgradesList := strings.Split(upgrades, ",")
 	for _, upgrade := range upgradesList {
 		switch upgrade {
