@@ -21,15 +21,22 @@ func ParseModules(filename string) (map[string]string, error) {
 	// Decode the body into a generic hcl.Body
 	body := file.Body
 
-	// Extract the module blocks
-	content, diags := body.Content(&hcl.BodySchema{
+	// Define the schema to include both "module" and "resource" blocks
+	schema := &hcl.BodySchema{
 		Blocks: []hcl.BlockHeaderSchema{
 			{
 				Type:       "module",
 				LabelNames: []string{"name"},
 			},
+			{
+				Type:       "resource",
+				LabelNames: []string{"type", "name"},
+			},
 		},
-	})
+	}
+
+	// Extract the content based on the schema
+	content, diags := body.Content(schema)
 	if diags.HasErrors() {
 		return nil, fmt.Errorf("failed to decode body: %s", diags)
 	}
@@ -52,7 +59,8 @@ func ParseModules(filename string) (map[string]string, error) {
 			// Get the value of the "version" attribute
 			versionAttr, exists := attrs["version"]
 			if !exists {
-				return nil, fmt.Errorf("module '%s' does not have a 'version' attribute", moduleName)
+				// If the module doesn't have a "version" attribute, skip it
+				continue
 			}
 
 			versionValue, diags := versionAttr.Expr.Value(nil)
