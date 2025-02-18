@@ -9,7 +9,7 @@ import (
 	"tfau/lib/hcl"
 	"tfau/lib/module"
 	"tfau/lib/provider"
-	"tfau/lib/tf"
+	"tfau/lib/terraform"
 
 	"github.com/spf13/cobra"
 )
@@ -21,7 +21,7 @@ var (
 	verbose   bool
 	providers = true
 	modules   = true
-	terraform = true
+	tf        = true
 )
 
 var rootCmd = &cobra.Command{
@@ -39,7 +39,7 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 		if upgrades == "" {
 			providers = true
 			modules = true
-			terraform = true
+			tf = true
 		} else {
 			// Process upgrades if specified
 			err := parseUpgradeOption(upgrades)
@@ -56,7 +56,7 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 		log.Println("Recursive:", recursive)
 		log.Println("Modules:", modules)
 		log.Println("Providers:", providers)
-		log.Println("Terraform:", terraform)
+		log.Println("Terraform:", tf)
 
 		// Iterate over each file and parse modules
 		for _, file := range files {
@@ -89,9 +89,9 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 				}
 				fmt.Println("Providers:", providers)
 			}
-			if terraform {
+			if tf {
 				// Extract Terraform version
-				terraformVersion, err := tf.Extract(content)
+				terraformVersion, err := terraform.Extract(content)
 				if err != nil {
 					log.Fatalf("Error extracting Terraform version: %s", err)
 				}
@@ -112,14 +112,14 @@ func parseUpgradeOption(upgrades string) error {
 		case "providers":
 			providers = true
 		case "terraform":
-			terraform = true
+			tf = true
 		default:
 			return errors.New("unknown upgrade type: " + upgrade)
 		}
 	}
 
 	// If no valid upgrades are specified, return an error
-	if !modules && !providers && !terraform {
+	if !modules && !providers && !tf {
 		return errors.New("at least one upgrade type must be specified")
 	}
 
