@@ -89,9 +89,10 @@ func Extract(content *hcl.BodyContent) (map[string]map[string]string, error) {
 			if moduleInfo["source"] != "" {
 				latestVersion, err := getLatestModuleVersion(moduleInfo["source"])
 				if err != nil {
-					log.Fatalf("Error retrieving latest module version: %v", err)
+					log.Printf("Warning: Failed to retrieve latest version for module '%s': %v\n", moduleName, err)
+				} else {
+					fmt.Printf("Latest version of %s: %s\n", moduleInfo["source"], latestVersion)
 				}
-				fmt.Printf("Latest version of %s: %s\n", moduleInfo["source"], latestVersion)
 			}
 		}
 	}
