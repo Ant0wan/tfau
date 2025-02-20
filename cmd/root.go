@@ -60,16 +60,10 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 
 		// Iterate over each file and parse modules
 		for _, file := range files {
-			// Parse the .tf file
-			file, err := hcl.ParseFile(file)
+			// Parse the .tf file and extract the content based on the schema
+			content, err := hcl.ParseFile(file)
 			if err != nil {
-				log.Fatalf("Error parsing file: %s", err)
-			}
-
-			// Extract the content based on the schema
-			content, diags := file.Body.Content(hcl.Schema)
-			if diags.HasErrors() {
-				log.Fatalf("Failed to decode body: %s", diags)
+				log.Fatalf("Failed to parse file: %s", err)
 			}
 
 			if modules {
