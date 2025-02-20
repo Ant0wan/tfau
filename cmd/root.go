@@ -16,9 +16,9 @@ import (
 
 var (
 	files     []string
-	recursive bool
+	recursive bool // TBD
 	upgrades  string
-	verbose   bool
+	verbose   bool // TBD
 	providers = true
 	modules   = true
 	tf        = true
