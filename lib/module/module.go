@@ -3,6 +3,8 @@ package module
 import (
 	"fmt"
 	"log"
+	"net/url"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 )
@@ -37,7 +39,33 @@ func Extract(content *hcl.BodyContent) (map[string]map[string]string, error) {
 			if diags.HasErrors() {
 				return nil, fmt.Errorf("failed to evaluate 'source' expression for module '%s': %s", moduleName, diags)
 			}
-			moduleInfo["source"] = sourceValue.AsString()
+
+			source := sourceValue.AsString()
+
+			// Handle Git SSH URLs (e.g., git@github.com:user/repo.git)
+			if strings.HasPrefix(source, "git@") {
+				source = strings.Replace(source, ":", "/", 1) // Replace the first colon with a slash
+				source = "ssh://" + source                    // Prepend with ssh://
+			}
+
+			// Parse the source URL to extract the version from the query parameter if it exists
+			if strings.Contains(source, "?") {
+				parsedURL, err := url.Parse(source)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse source URL for module '%s': %s", moduleName, err)
+				}
+
+				// Extract the version from the query parameter
+				version := parsedURL.Query().Get("ref")
+				if version != "" {
+					moduleInfo["version"] = version
+				}
+
+				// Remove the query parameter from the source
+				source = strings.Split(source, "?")[0]
+			}
+
+			moduleInfo["source"] = source
 
 			// Get the value of the "version" attribute (if it exists)
 			versionAttr, exists := attrs["version"]
@@ -47,7 +75,7 @@ func Extract(content *hcl.BodyContent) (map[string]map[string]string, error) {
 					return nil, fmt.Errorf("failed to evaluate 'version' expression for module '%s': %s", moduleName, diags)
 				}
 				moduleInfo["version"] = versionValue.AsString()
-			} else {
+			} else if _, ok := moduleInfo["version"]; !ok {
 				// If the module doesn't have a "version" attribute, set it to an empty string
 				moduleInfo["version"] = ""
 			}
