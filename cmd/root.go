@@ -30,10 +30,13 @@ var rootCmd = &cobra.Command{
 	Long: `Given a Terraform project and command line parameters,
 tfau upgrades each provider, module, and Terraform version in place in your HCL files.`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
+		log.Println("Files:", files)
+
 		// If no files are specified, set recursive to true
 		if len(files) == 0 {
 			recursive = true
 		}
+		log.Println("Recursive:", recursive)
 
 		// If upgrades are not specified, default to upgrading all (modules, providers, terraform)
 		if upgrades == "" {
@@ -51,13 +54,6 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Log the configuration
-		log.Println("Files:", files)
-		log.Println("Recursive:", recursive)
-		log.Println("Modules:", modules)
-		log.Println("Providers:", providers)
-		log.Println("Terraform:", tf)
-
 		// Iterate over each file and parse modules
 		for _, file := range files {
 			// Parse the .tf file and extract the content based on the schema
@@ -66,6 +62,7 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 				log.Fatalf("Failed to parse file: %s", err)
 			}
 
+			log.Println("Modules:", modules)
 			if modules {
 				// Extract modules
 				modules, err := module.Extract(content)
@@ -75,6 +72,8 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 				fmt.Println("Modules:", modules)
 
 			}
+
+			log.Println("Providers:", providers)
 			if providers {
 				// Extract providers
 				providers, err := provider.Extract(content)
@@ -83,6 +82,8 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 				}
 				fmt.Println("Providers:", providers)
 			}
+
+			log.Println("Terraform:", tf)
 			if tf {
 				// Extract Terraform version
 				terraformVersion, err := terraform.Extract(content)
