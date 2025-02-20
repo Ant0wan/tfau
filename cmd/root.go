@@ -39,12 +39,9 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 		log.Println("Recursive:", recursive)
 
 		// If upgrades are not specified, default to upgrading all (modules, providers, terraform)
-		if upgrades == "" {
-			providers = true
-			modules = true
-			tf = true
-		} else {
-			// Process upgrades if specified
+		// otherwise process specified upgrades only
+		if upgrades != "" {
+			providers, modules, tf = false, false, false
 			err := parseUpgradeOption(upgrades)
 			if err != nil {
 				return err
