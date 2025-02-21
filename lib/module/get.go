@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os/exec"
 	"sort"
 	"strings"
 
@@ -24,7 +25,7 @@ func getLatestModuleVersion(source string) (string, error) {
 
 	// Check if the source is a Git-based module
 	if isGitModule(source) {
-		return "", fmt.Errorf("Git module support is not implemented")
+		return getLatestVersionFromGitHub(source) // Fetch the latest release or tag from GitHub
 	}
 
 	// If the source format is not recognized, return an error
@@ -164,4 +165,96 @@ func getLatestVersionFromRegistry(source string) (string, error) {
 	}
 
 	return latestVersion, nil
+}
+
+// getLatestVersionFromGitHub retrieves the latest release or tag from a GitHub repository using the `gh` CLI.
+func getLatestVersionFromGitHub(source string) (string, error) {
+	// Extract the repository owner and name from the source
+	owner, repo, err := extractGitHubOwnerAndRepo(source)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract GitHub owner and repo: %v", err)
+	}
+
+	// Try to fetch the latest release using the `gh` CLI
+	releaseCmd := exec.Command("gh", "api", "-X", "GET", fmt.Sprintf("/repos/%s/%s/releases/latest", owner, repo))
+	releaseOutput, err := releaseCmd.Output()
+	if err == nil {
+		// Parse the release JSON
+		var release struct {
+			TagName string `json:"tag_name"` // The tag name of the latest release
+		}
+		if err := json.Unmarshal(releaseOutput, &release); err != nil {
+			return "", fmt.Errorf("failed to decode GitHub release response: %v", err)
+		}
+
+		// Log the module name, source, and version
+		log.Printf("Module name: %s, source: %s, version: %s", repo, source, release.TagName)
+
+		// Return the latest release version
+		return release.TagName, nil
+	}
+
+	// If no releases are found, fall back to fetching the latest tag
+	tagCmd := exec.Command("gh", "api", "-X", "GET", fmt.Sprintf("/repos/%s/%s/tags", owner, repo))
+	tagOutput, err := tagCmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch tags from GitHub: %v", err)
+	}
+
+	// Parse the tags JSON
+	var tags []struct {
+		Name string `json:"name"` // The name of the tag
+	}
+	if err := json.Unmarshal(tagOutput, &tags); err != nil {
+		return "", fmt.Errorf("failed to decode GitHub tags response: %v", err)
+	}
+
+	// Extract and sort tags in descending order
+	if len(tags) == 0 {
+		return "", fmt.Errorf("no tags found for repository: %s/%s", owner, repo)
+	}
+	tagNames := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		tagNames = append(tagNames, tag.Name)
+	}
+
+	// Sort tags in descending order
+	sort.Slice(tagNames, func(i, j int) bool {
+		return tagNames[i] > tagNames[j]
+	})
+
+	// Log the module name, source, and version
+	log.Printf("Module name: %s, source: %s, version: %s", repo, source, tagNames[0])
+
+	// Return the latest tag
+	return tagNames[0], nil
+}
+
+// extractGitHubOwnerAndRepo extracts the owner and repository name from a GitHub source URL.
+func extractGitHubOwnerAndRepo(source string) (string, string, error) {
+	// Handle SSH and HTTPS URLs
+	var repoPath string
+	if strings.HasPrefix(source, "git@") || strings.HasPrefix(source, "ssh://") {
+		// SSH URL: git@github.com:owner/repo.git
+		repoPath = strings.TrimPrefix(source, "git@")
+		repoPath = strings.TrimPrefix(repoPath, "ssh://")
+		repoPath = strings.TrimSuffix(repoPath, ".git")
+		repoPath = strings.Replace(repoPath, ":", "/", 1)
+	} else if strings.HasPrefix(source, "https://") {
+		// HTTPS URL: https://github.com/owner/repo.git
+		repoPath = strings.TrimPrefix(source, "https://")
+		repoPath = strings.TrimSuffix(repoPath, ".git")
+	} else {
+		return "", "", fmt.Errorf("unsupported GitHub source format: %s", source)
+	}
+
+	// Split the path into owner and repo
+	parts := strings.Split(repoPath, "/")
+	if len(parts) < 3 {
+		return "", "", fmt.Errorf("invalid GitHub source format: %s", source)
+	}
+	owner := parts[1]
+	repo := parts[2]
+
+	return owner, repo, nil
 }
