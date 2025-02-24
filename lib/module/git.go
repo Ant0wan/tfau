@@ -16,11 +16,13 @@ import (
 
 // fetchGitTags fetches all tags from a Git repository using the Go Git library.
 func fetchGitTags(source string) ([]string, error) {
-	// Create a new in-memory repository
+	// Create a new in-memory repository with shallow cloning
 	repo, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
-		URL:      source,
-		Progress: log.Writer(),       // Log progress to stdout
-		Auth:     getGitAuth(source), // Get authentication based on the protocol
+		URL:          source,
+		Depth:        1,                  // Shallow clone (only the latest commit)
+		SingleBranch: true,               // Clone only the default branch
+		Progress:     log.Writer(),       // Log progress to stdout
+		Auth:         getGitAuth(source), // Get authentication based on the protocol
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone repository: %v", err)
