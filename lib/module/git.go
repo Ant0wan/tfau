@@ -18,11 +18,9 @@ import (
 func fetchGitTags(source string) ([]string, error) {
 	// Create a new in-memory repository
 	repo, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
-		URL:           source,
-		ReferenceName: "refs/tags/*",
-		SingleBranch:  false,
-		Depth:         1,
-		Auth:          getGitAuth(source), // Get authentication based on the protocol
+		URL:      source,
+		Progress: log.Writer(),       // Log progress to stdout
+		Auth:     getGitAuth(source), // Get authentication based on the protocol
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone repository: %v", err)
