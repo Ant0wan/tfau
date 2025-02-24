@@ -1,3 +1,5 @@
+// Main module logic and entry point
+
 package module
 
 import (
