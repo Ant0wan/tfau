@@ -3,17 +3,14 @@ package module
 import (
 	"fmt"
 	"log"
-	"os"
 	"sort"
 	"strings"
 
-	"github.com/go-git/go-git/v5"                    // Updated import
-	"github.com/go-git/go-git/v5/plumbing"           // Updated import
-	"github.com/go-git/go-git/v5/plumbing/transport" // Updated import
-
-	// Updated import
-	"github.com/go-git/go-git/v5/plumbing/transport/ssh" // Updated import
-	"github.com/go-git/go-git/v5/storage/memory"         // Updated import
+	"github.com/go-git/go-git/v5"                        // Go Git library
+	"github.com/go-git/go-git/v5/plumbing"               // Plumbing for Git objects
+	"github.com/go-git/go-git/v5/plumbing/transport"     // Git transport protocols
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh" // SSH transport
+	"github.com/go-git/go-git/v5/storage/memory"         // In-memory storage
 	"github.com/hashicorp/go-version"                    // Semantic version parsing
 )
 
@@ -57,12 +54,12 @@ func getGitAuth(source string) transport.AuthMethod {
 		// No authentication for public HTTPS repositories
 		return nil
 	} else if strings.HasPrefix(source, "ssh://") || strings.HasPrefix(source, "git@") {
-		// Use SSH authentication
-		publicKeys, err := ssh.NewPublicKeysFromFile("git", os.ExpandEnv("$HOME/.ssh/id_rsa"), "")
+		// Use SSH authentication with the SSH agent
+		authMethod, err := ssh.DefaultAuthBuilder("git")
 		if err != nil {
-			log.Fatalf("Failed to load SSH key: %v", err)
+			log.Fatalf("Failed to create SSH auth method: %v", err)
 		}
-		return publicKeys
+		return authMethod
 	}
 	return nil
 }
