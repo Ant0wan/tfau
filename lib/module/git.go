@@ -6,43 +6,48 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/go-git/go-git/v5"                        // Go Git library
-	"github.com/go-git/go-git/v5/plumbing"               // Plumbing for Git objects
-	"github.com/go-git/go-git/v5/plumbing/transport"     // Git transport protocols
-	"github.com/go-git/go-git/v5/plumbing/transport/ssh" // SSH transport
-	"github.com/go-git/go-git/v5/storage/memory"         // In-memory storage
-	"github.com/hashicorp/go-version"                    // Semantic version parsing
+	"github.com/go-git/go-git/v5/plumbing"                  // Git plumbing types
+	"github.com/go-git/go-git/v5/plumbing/transport"        // Git transport protocols
+	"github.com/go-git/go-git/v5/plumbing/transport/client" // Git client
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"    // SSH transport
+	"github.com/hashicorp/go-version"                       // Semantic version parsing
 )
 
-// fetchGitTags fetches all tags from a Git repository using the Go Git library.
+// fetchGitTags fetches all tags from a Git repository without cloning it.
 func fetchGitTags(source string) ([]string, error) {
-	// Create a new in-memory repository with shallow cloning
-	repo, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
-		URL:          source,
-		Depth:        1,                  // Shallow clone (only the latest commit)
-		SingleBranch: true,               // Clone only the default branch
-		Progress:     log.Writer(),       // Log progress to stdout
-		Auth:         getGitAuth(source), // Get authentication based on the protocol
-	})
+	// Parse the repository URL
+	ep, err := transport.NewEndpoint(source)
 	if err != nil {
-		return nil, fmt.Errorf("failed to clone repository: %v", err)
+		return nil, fmt.Errorf("failed to parse repository URL: %v", err)
 	}
 
-	// Fetch all tags
-	tagRefs, err := repo.Tags()
+	// Create a Git client
+	gitClient, err := client.NewClient(ep)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch tags: %v", err)
+		return nil, fmt.Errorf("failed to create Git client: %v", err)
+	}
+
+	// Open a session to the remote repository
+	session, err := gitClient.NewUploadPackSession(ep, getGitAuth(source))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create upload pack session: %v", err)
+	}
+	defer session.Close()
+
+	// Fetch the advertised references (including tags)
+	refs, err := session.AdvertisedReferences()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch advertised references: %v", err)
 	}
 
 	// Extract tag names
 	var tags []string
-	err = tagRefs.ForEach(func(ref *plumbing.Reference) error {
-		tagName := ref.Name().Short()
-		tags = append(tags, tagName)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to iterate over tags: %v", err)
+	for refName := range refs.References {
+		// Convert refName to plumbing.ReferenceName
+		ref := plumbing.ReferenceName(refName)
+		if ref.IsTag() {
+			tags = append(tags, ref.Short())
+		}
 	}
 
 	return tags, nil
