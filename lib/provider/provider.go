@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 // ProviderLatestVersion represents the latest version of a provider from the Terraform Registry.
@@ -46,6 +47,32 @@ func Extract(content *hcl.BodyContent) (map[string]string, error) {
 
 			// Store the provider name and version in the map
 			providers[providerName] = versionValue.AsString()
+		} else if block.Type == "terraform" {
+			// Handle the `terraform` block to extract `required_providers`
+			body, ok := block.Body.(*hclsyntax.Body)
+			if !ok {
+				return nil, fmt.Errorf("failed to parse terraform block body")
+			}
+
+			// Look for the `required_providers` block
+			for _, innerBlock := range body.Blocks {
+				if innerBlock.Type == "required_providers" {
+					// Decode the attributes of the `required_providers` block
+					attrs, diags := innerBlock.Body.JustAttributes()
+					if diags.HasErrors() {
+						return nil, fmt.Errorf("failed to decode attributes for required_providers block: %s", diags)
+					}
+
+					// Extract provider versions from the attributes
+					for providerName, attr := range attrs {
+						versionValue, diags := attr.Expr.Value(nil)
+						if diags.HasErrors() {
+							return nil, fmt.Errorf("failed to evaluate version expression for provider '%s': %s", providerName, diags)
+						}
+						providers[providerName] = versionValue.AsString()
+					}
+				}
+			}
 		}
 	}
 
