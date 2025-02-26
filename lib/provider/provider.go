@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sort"
 
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
@@ -23,7 +25,6 @@ type ProviderVersions struct {
 	} `json:"versions"`
 }
 
-// Extract extracts provider names and their versions from the parsed content.
 // Extract extracts provider names and their versions from the parsed content.
 func Extract(content *hcl.BodyContent) (map[string]string, error) {
 	// Create a map to store provider names and versions
@@ -144,8 +145,26 @@ func GetLatestVersion(providerName string) (string, error) {
 		return "", fmt.Errorf("no versions found for provider '%s'", providerName)
 	}
 
-	// The latest version is the first item in the list
-	latestVersion := versions.Versions[0].Version
+	// Parse versions and sort them
+	var versionList []*version.Version
+	for _, v := range versions.Versions {
+		parsedVersion, err := version.NewVersion(v.Version)
+		if err != nil {
+			log.Printf("Failed to parse version '%s' for provider '%s': %v", v.Version, providerName, err)
+			continue
+		}
+		versionList = append(versionList, parsedVersion)
+	}
+
+	if len(versionList) == 0 {
+		return "", fmt.Errorf("no valid versions found for provider '%s'", providerName)
+	}
+
+	// Sort versions in descending order
+	sort.Sort(sort.Reverse(version.Collection(versionList)))
+
+	// The latest version is the first item in the sorted list
+	latestVersion := versionList[0].String()
 	return latestVersion, nil
 }
 
