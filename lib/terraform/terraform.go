@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-// TerraformVersions represents the response from the Terraform Registry API for Terraform versions.
-type TerraformVersions struct {
-	Versions []struct {
+// TerraformReleases represents the response from the Terraform Releases API.
+type TerraformReleases struct {
+	Versions map[string]struct {
 		Version string `json:"version"`
 	} `json:"versions"`
 }
@@ -62,10 +62,10 @@ func Extract(content *hcl.BodyContent) (string, error) {
 	return "", nil
 }
 
-// GetLatestVersion fetches the latest Terraform version from the Terraform Registry.
+// GetLatestVersion fetches the latest Terraform version from the Terraform Releases API.
 func GetLatestVersion() (string, error) {
-	// Construct the URL for the Terraform Registry API
-	url := "https://registry.terraform.io/v1/versions"
+	// Construct the URL for the Terraform Releases API
+	url := "https://releases.hashicorp.com/terraform/index.json"
 	log.Printf("Fetching latest Terraform version (URL: %s)", url) // Debug log
 
 	resp, err := http.Get(url)
@@ -83,21 +83,21 @@ func GetLatestVersion() (string, error) {
 		return "", fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	var versions TerraformVersions
-	if err := json.Unmarshal(body, &versions); err != nil {
+	var releases TerraformReleases
+	if err := json.Unmarshal(body, &releases); err != nil {
 		return "", fmt.Errorf("failed to unmarshal response: %v", err)
 	}
 
-	if len(versions.Versions) == 0 {
+	if len(releases.Versions) == 0 {
 		return "", fmt.Errorf("no Terraform versions found")
 	}
 
 	// Parse versions and sort them
 	var versionList []*version.Version
-	for _, v := range versions.Versions {
-		parsedVersion, err := version.NewVersion(v.Version)
+	for versionStr := range releases.Versions {
+		parsedVersion, err := version.NewVersion(versionStr)
 		if err != nil {
-			log.Printf("Failed to parse version '%s': %v", v.Version, err)
+			log.Printf("Failed to parse version '%s': %v", versionStr, err)
 			continue
 		}
 		versionList = append(versionList, parsedVersion)
