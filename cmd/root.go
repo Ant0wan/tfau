@@ -67,17 +67,25 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 					log.Fatalf("Error extracting modules: %s", err)
 				}
 				fmt.Println("Modules:", modules)
-
 			}
 
 			log.Println("Providers:", providers)
 			if providers {
-				// Extract providers
-				providers, err := provider.Extract(content)
+				// Extract providers and their latest versions
+				currentVersions, latestVersions, err := provider.ExtractWithLatestVersions(content)
 				if err != nil {
 					log.Fatalf("Error extracting providers: %s", err)
 				}
-				fmt.Println("Providers:", providers)
+
+				if len(currentVersions) == 0 {
+					log.Println("No provider blocks found in the file.")
+				} else {
+					// Print current and latest versions
+					for name, version := range currentVersions {
+						latestVersion := latestVersions[name]
+						fmt.Printf("Provider: %s, Current Version: %s, Latest Version: %s\n", name, version, latestVersion)
+					}
+				}
 			}
 
 			log.Println("Terraform:", tf)

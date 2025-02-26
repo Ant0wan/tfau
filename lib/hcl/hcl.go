@@ -22,6 +22,10 @@ var Schema = &hcl.BodySchema{
 			Type:       "terraform",
 			LabelNames: []string{},
 		},
+		{
+			Type:       "data",
+			LabelNames: []string{"type", "name"},
+		},
 	},
 }
 
