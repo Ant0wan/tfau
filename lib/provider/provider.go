@@ -16,6 +16,14 @@ type ProviderLatestVersion struct {
 	Version string `json:"version"`
 }
 
+// ProviderVersions represents the response from the Terraform Registry API for provider versions.
+type ProviderVersions struct {
+	Versions []struct {
+		Version string `json:"version"`
+	} `json:"versions"`
+}
+
+// Extract extracts provider names and their versions from the parsed content.
 // Extract extracts provider names and their versions from the parsed content.
 func Extract(content *hcl.BodyContent) (map[string]string, error) {
 	// Create a map to store provider names and versions
@@ -65,11 +73,38 @@ func Extract(content *hcl.BodyContent) (map[string]string, error) {
 
 					// Extract provider versions from the attributes
 					for providerName, attr := range attrs {
-						versionValue, diags := attr.Expr.Value(nil)
+						// Evaluate the attribute value
+						value, diags := attr.Expr.Value(nil)
 						if diags.HasErrors() {
-							return nil, fmt.Errorf("failed to evaluate version expression for provider '%s': %s", providerName, diags)
+							return nil, fmt.Errorf("failed to evaluate expression for provider '%s': %s", providerName, diags)
 						}
-						providers[providerName] = versionValue.AsString()
+
+						// Handle both object and string formats
+						if value.Type().IsObjectType() {
+							// Object format: { source = "hashicorp/google", version = "6.22.0" }
+							providerMap := value.AsValueMap()
+							sourceValue, ok := providerMap["source"]
+							if !ok {
+								return nil, fmt.Errorf("provider '%s' is missing 'source' attribute", providerName)
+							}
+							source := sourceValue.AsString()
+
+							versionValue, ok := providerMap["version"]
+							if !ok {
+								return nil, fmt.Errorf("provider '%s' is missing 'version' attribute", providerName)
+							}
+							version := versionValue.AsString()
+
+							// Store the provider source and version in the map
+							providers[source] = version
+						} else if value.Type().IsPrimitiveType() {
+							// String format: ">=4.84"
+							version := value.AsString()
+							// Assume the provider is from the "hashicorp" namespace
+							providers["hashicorp/"+providerName] = version
+						} else {
+							return nil, fmt.Errorf("provider '%s' has an unsupported format", providerName)
+						}
 					}
 				}
 			}
@@ -81,15 +116,18 @@ func Extract(content *hcl.BodyContent) (map[string]string, error) {
 
 // GetLatestVersion fetches the latest version of a provider from the Terraform Registry.
 func GetLatestVersion(providerName string) (string, error) {
-	url := fmt.Sprintf("https://registry.terraform.io/v1/providers/%s/latest", providerName)
+	// Construct the URL for the Terraform Registry API
+	url := fmt.Sprintf("https://registry.terraform.io/v1/providers/%s/versions", providerName)
+	log.Printf("Fetching versions for provider: %s (URL: %s)", providerName, url) // Debug log
+
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch latest version for provider '%s': %v", providerName, err)
+		return "", fmt.Errorf("failed to fetch versions for provider '%s': %v", providerName, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to fetch latest version for provider '%s': %s", providerName, resp.Status)
+		return "", fmt.Errorf("failed to fetch versions for provider '%s': %s", providerName, resp.Status)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -97,12 +135,18 @@ func GetLatestVersion(providerName string) (string, error) {
 		return "", fmt.Errorf("failed to read response body for provider '%s': %v", providerName, err)
 	}
 
-	var latestVersion ProviderLatestVersion
-	if err := json.Unmarshal(body, &latestVersion); err != nil {
+	var versions ProviderVersions
+	if err := json.Unmarshal(body, &versions); err != nil {
 		return "", fmt.Errorf("failed to unmarshal response for provider '%s': %v", providerName, err)
 	}
 
-	return latestVersion.Version, nil
+	if len(versions.Versions) == 0 {
+		return "", fmt.Errorf("no versions found for provider '%s'", providerName)
+	}
+
+	// The latest version is the first item in the list
+	latestVersion := versions.Versions[0].Version
+	return latestVersion, nil
 }
 
 // ExtractWithLatestVersions extracts provider names, their current versions, and their latest versions.
