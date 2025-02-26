@@ -90,12 +90,17 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 
 			log.Println("Terraform:", tf)
 			if tf {
-				// Extract Terraform version
-				terraformVersion, err := terraform.Extract(content)
+				// Extract Terraform version and fetch the latest version
+				currentVersion, latestVersion, err := terraform.ExtractWithLatestVersion(content)
 				if err != nil {
 					log.Fatalf("Error extracting Terraform version: %s", err)
 				}
-				fmt.Println("Terraform Version:", terraformVersion)
+
+				if currentVersion == "" {
+					log.Println("No Terraform version specified in the file.")
+				} else {
+					fmt.Printf("Terraform Version: %s, Latest Version: %s\n", currentVersion, latestVersion)
+				}
 			}
 		}
 
