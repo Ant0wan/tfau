@@ -15,13 +15,14 @@ import (
 )
 
 var (
-	files     []string
-	recursive bool // TBD
-	upgrades  string
-	verbose   bool // TBD
-	providers = true
-	modules   = true
-	tf        = true
+	files            []string
+	recursive        bool // TBD
+	upgrades         string
+	verbose          bool // TBD
+	providers        = true
+	modules          = true
+	tf               = true
+	terraformVersion string // Desired Terraform version
 )
 
 var rootCmd = &cobra.Command{
@@ -90,16 +91,20 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 
 			log.Println("Terraform:", tf)
 			if tf {
-				// Extract Terraform version and fetch the latest version
-				currentVersion, latestVersion, err := terraform.ExtractWithLatestVersion(content)
-				if err != nil {
-					log.Fatalf("Error extracting Terraform version: %s", err)
-				}
-
-				if currentVersion == "" {
-					log.Println("No Terraform version specified in the file.")
+				if terraformVersion != "" {
+					log.Printf("Terraform version specified: %s\n", terraformVersion)
 				} else {
-					fmt.Printf("Terraform Version: %s, Latest Version: %s\n", currentVersion, latestVersion)
+					// Extract Terraform version and fetch the latest version
+					currentVersion, latestVersion, err := terraform.ExtractWithLatestVersion(content)
+					if err != nil {
+						log.Fatalf("Error extracting Terraform version: %s", err)
+					}
+
+					if currentVersion == "" {
+						log.Println("No Terraform version specified in the file.")
+					} else {
+						fmt.Printf("Terraform Version: %s, Latest Version: %s\n", currentVersion, latestVersion)
+					}
 				}
 			}
 		}
@@ -144,4 +149,7 @@ func init() {
 
 	// Verbose flag (optional)
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
+
+	// Terraform version flag (optional)
+	rootCmd.Flags().StringVar(&terraformVersion, "terraform-version", "", "Desired Terraform version to update to (e.g., '~>1.9')")
 }
