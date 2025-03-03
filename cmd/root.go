@@ -93,6 +93,12 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 			if tf {
 				if terraformVersion != "" {
 					log.Printf("Terraform version specified: %s\n", terraformVersion)
+					// Update the required_version in the file with the specified version
+					err := terraform.UpdateRequiredVersion(file, terraformVersion)
+					if err != nil {
+						log.Fatalf("Failed to update required_version in the file: %s", err)
+					}
+					log.Printf("Updated required_version to %s in the file.\n", terraformVersion)
 				} else {
 					// Extract Terraform version and fetch the latest version
 					currentVersion, latestVersion, err := terraform.ExtractWithLatestVersion(content)
@@ -104,6 +110,13 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 						log.Println("No Terraform version specified in the file.")
 					} else {
 						fmt.Printf("Terraform Version: %s, Latest Version: %s\n", currentVersion, latestVersion)
+
+						// Update the required_version in the file with the latest version
+						err := terraform.UpdateRequiredVersion(file, latestVersion)
+						if err != nil {
+							log.Fatalf("Failed to update required_version in the file: %s", err)
+						}
+						log.Printf("Updated required_version to %s in the file.\n", latestVersion)
 					}
 				}
 			}

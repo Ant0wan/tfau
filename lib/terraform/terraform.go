@@ -10,6 +10,8 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // TerraformReleases represents the response from the Terraform Releases API.
@@ -134,4 +136,36 @@ func ExtractWithLatestVersion(content *hcl.BodyContent) (string, string, error) 
 	log.Printf("Latest Terraform version: %s", latestVersion) // Debug log
 
 	return currentVersion, latestVersion, nil
+}
+
+// UpdateRequiredVersion updates the required_version in the HCL content and writes it back to the file.
+func UpdateRequiredVersion(filename string, newVersion string) error {
+	// Read the file content
+	src, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	// Parse the HCL content
+	file, diags := hclwrite.ParseConfig(src, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return fmt.Errorf("failed to parse HCL content: %s", diags)
+	}
+
+	// Find the terraform block
+	body := file.Body()
+	for _, block := range body.Blocks() {
+		if block.Type() == "terraform" {
+			// Update the required_version attribute
+			block.Body().SetAttributeValue("required_version", cty.StringVal(newVersion))
+			break
+		}
+	}
+
+	// Write the updated content back to the file
+	if err := ioutil.WriteFile(filename, file.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write file: %v", err)
+	}
+
+	return nil
 }
