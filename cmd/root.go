@@ -15,13 +15,14 @@ import (
 )
 
 var (
-	files     []string
-	recursive bool // TBD
-	upgrades  string
-	verbose   bool // TBD
-	providers = true
-	modules   = true
-	tf        = true
+	files            []string
+	recursive        bool // TBD
+	upgrades         string
+	verbose          bool // TBD
+	providers        = true
+	modules          = true
+	tf               = true
+	terraformVersion string // Desired Terraform version
 )
 
 var rootCmd = &cobra.Command{
@@ -90,12 +91,34 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 
 			log.Println("Terraform:", tf)
 			if tf {
-				// Extract Terraform version
-				terraformVersion, err := terraform.Extract(content)
-				if err != nil {
-					log.Fatalf("Error extracting Terraform version: %s", err)
+				if terraformVersion != "" {
+					log.Printf("Terraform version specified: %s\n", terraformVersion)
+					// Update the required_version in the file with the specified version
+					err := terraform.UpdateRequiredVersion(file, terraformVersion)
+					if err != nil {
+						log.Fatalf("Failed to update required_version in the file: %s", err)
+					}
+					log.Printf("Updated required_version to %s in the file.\n", terraformVersion)
+				} else {
+					// Extract Terraform version and fetch the latest version
+					currentVersion, latestVersion, err := terraform.ExtractWithLatestVersion(content)
+					if err != nil {
+						log.Fatalf("Error extracting Terraform version: %s", err)
+					}
+
+					if currentVersion == "" {
+						log.Println("No Terraform version specified in the file.")
+					} else {
+						fmt.Printf("Terraform Version: %s, Latest Version: %s\n", currentVersion, latestVersion)
+
+						// Update the required_version in the file with the latest version
+						err := terraform.UpdateRequiredVersion(file, latestVersion)
+						if err != nil {
+							log.Fatalf("Failed to update required_version in the file: %s", err)
+						}
+						log.Printf("Updated required_version to %s in the file.\n", latestVersion)
+					}
 				}
-				fmt.Println("Terraform Version:", terraformVersion)
 			}
 		}
 
@@ -139,4 +162,7 @@ func init() {
 
 	// Verbose flag (optional)
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
+
+	// Terraform version flag (optional)
+	rootCmd.Flags().StringVar(&terraformVersion, "terraform-version", "", "Desired Terraform version to update to (e.g., '~>1.9')")
 }
