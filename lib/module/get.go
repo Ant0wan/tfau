@@ -1,5 +1,3 @@
-// Get latest module versions logic
-
 package module
 
 import (
@@ -7,8 +5,8 @@ import (
 	"strings"
 )
 
-// getLatestModuleVersion retrieves the latest version of a module based on its source.
-func getLatestModuleVersion(source string) (string, error) {
+// GetLatestModuleVersion retrieves the latest version of a module based on its source.
+func GetLatestModuleVersion(source string) (string, error) {
 	// Normalize the source by removing subdirectory information
 	normalizedSource := normalizeSource(source)
 

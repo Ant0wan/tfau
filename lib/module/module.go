@@ -1,14 +1,15 @@
-// Main module logic and entry point
-
 package module
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // Extract extracts module names, their sources, and versions from the parsed content.
@@ -89,7 +90,7 @@ func Extract(content *hcl.BodyContent) (map[string]map[string]string, error) {
 
 			// Get the latest version of the module (if needed)
 			if moduleInfo["source"] != "" {
-				latestVersion, err := getLatestModuleVersion(moduleInfo["source"])
+				latestVersion, err := GetLatestModuleVersion(moduleInfo["source"])
 				if err != nil {
 					log.Printf("Warning: Failed to retrieve latest version for module '%s': %v\n", moduleName, err)
 				} else {
@@ -100,4 +101,49 @@ func Extract(content *hcl.BodyContent) (map[string]map[string]string, error) {
 	}
 
 	return modules, nil
+}
+
+// UpdateModuleVersions updates the module versions in the HCL content and writes it back to the file.
+// It only updates the version if the version attribute already exists in the module block.
+func UpdateModuleVersions(filename string, latestVersions map[string]string) error {
+	// Read the file content
+	src, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	// Parse the HCL content
+	file, diags := hclwrite.ParseConfig(src, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return fmt.Errorf("failed to parse HCL content: %s", diags)
+	}
+
+	// Iterate over the blocks to find module blocks
+	body := file.Body()
+	for _, block := range body.Blocks() {
+		if block.Type() == "module" {
+			// Get the module name
+			moduleName := block.Labels()[0]
+
+			// Check if the module has a latest version
+			if latestVersion, exists := latestVersions[moduleName]; exists {
+				// Check if the version attribute already exists in the module block
+				if attr := block.Body().GetAttribute("version"); attr != nil {
+					log.Printf("Updating module '%s' to version '%s'", moduleName, latestVersion)
+					// Update the version attribute in the module block
+					block.Body().SetAttributeValue("version", cty.StringVal(latestVersion))
+				} else {
+					log.Printf("Module '%s' does not have a version attribute. Skipping update.", moduleName)
+				}
+			}
+		}
+	}
+
+	// Write the updated content back to the file
+	if err := ioutil.WriteFile(filename, file.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write file: %v", err)
+	}
+
+	log.Printf("Successfully updated module versions in file: %s", filename)
+	return nil
 }
