@@ -86,6 +86,13 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 						latestVersion := latestVersions[name]
 						fmt.Printf("Provider: %s, Current Version: %s, Latest Version: %s\n", name, version, latestVersion)
 					}
+
+					// Update the provider versions in the file
+					err := provider.UpdateProviderVersions(file, latestVersions)
+					if err != nil {
+						log.Fatalf("Failed to update provider versions in the file: %s", err)
+					}
+					log.Println("Updated provider versions in the file.")
 				}
 			}
 

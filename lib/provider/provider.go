@@ -11,7 +11,58 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/zclconf/go-cty/cty"
 )
+
+// UpdateProviderVersions updates the provider versions in the HCL content and writes it back to the file.
+func UpdateProviderVersions(filename string, latestVersions map[string]string) error {
+	// Read the file content
+	src, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	// Parse the HCL content
+	file, diags := hclwrite.ParseConfig(src, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return fmt.Errorf("failed to parse HCL content: %s", diags)
+	}
+
+	// Iterate over the blocks to find provider blocks and required_providers
+	body := file.Body()
+	for _, block := range body.Blocks() {
+		if block.Type() == "provider" {
+			// Update the version attribute in the provider block
+			providerName := block.Labels()[0]
+			if latestVersion, exists := latestVersions[providerName]; exists {
+				block.Body().SetAttributeValue("version", cty.StringVal(latestVersion))
+			}
+		} else if block.Type() == "terraform" {
+			// Handle the `required_providers` block
+			for _, innerBlock := range block.Body().Blocks() {
+				if innerBlock.Type() == "required_providers" {
+					// Update the version attribute in the required_providers block
+					for providerName, attr := range innerBlock.Body().Attributes() {
+						fullProviderName := "hashicorp/" + providerName
+						if latestVersion, exists := latestVersions[fullProviderName]; exists {
+							// Update the version in the attribute value
+							attr.Expr().Variables()
+							innerBlock.Body().SetAttributeValue(providerName, cty.StringVal(latestVersion))
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Write the updated content back to the file
+	if err := ioutil.WriteFile(filename, file.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write file: %v", err)
+	}
+
+	return nil
+}
 
 // ProviderLatestVersion represents the latest version of a provider from the Terraform Registry.
 type ProviderLatestVersion struct {
