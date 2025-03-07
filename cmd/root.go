@@ -67,7 +67,32 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 				if err != nil {
 					log.Fatalf("Error extracting modules: %s", err)
 				}
-				fmt.Println("Modules:", modules)
+
+				// Create a map to store the latest versions
+				latestVersions := make(map[string]string)
+
+				// Fetch the latest version for each module
+				for name, info := range modules {
+					source := info["source"]
+					if source != "" {
+						latestVersion, err := module.GetLatestModuleVersion(source)
+						if err != nil {
+							log.Printf("Warning: Failed to retrieve latest version for module '%s': %v\n", name, err)
+						} else {
+							latestVersions[name] = latestVersion
+							fmt.Printf("Module: %s, Current Version: %s, Latest Version: %s\n", name, info["version"], latestVersion)
+						}
+					}
+				}
+
+				log.Printf("Latest versions to update: %v", latestVersions)
+
+				// Update the module versions in the file
+				err = module.UpdateModuleVersions(file, latestVersions)
+				if err != nil {
+					log.Fatalf("Failed to update module versions in the file: %s", err)
+				}
+				log.Println("Updated module versions in the file.")
 			}
 
 			log.Println("Providers:", providers)

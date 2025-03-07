@@ -1,5 +1,3 @@
-// Hashicorp (Terraform Registry)-related functionality
-
 package module
 
 import (
@@ -11,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/go-version" // Semantic version parsing
+	"github.com/hashicorp/go-version"
 )
 
 // getLatestVersionFromRegistry retrieves the latest version of a Terraform Registry module.
