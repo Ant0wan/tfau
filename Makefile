@@ -5,7 +5,6 @@ all: build
 
 build:
 	CGO_ENABLED=0 GOOS=linux $(GO) build -v -o $(NAME)
-
 run:
 	CGO_ENABLED=0 GOOS=linux $(GO) run -v $(NAME)
 
