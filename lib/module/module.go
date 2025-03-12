@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -141,14 +142,30 @@ func UpdateModuleVersions(filename string, latestVersions map[string]string) err
 					sourceValue := string(sourceTokens.Bytes())
 
 					if strings.Contains(sourceValue, "?ref=") {
-						// Update the ref in the source attribute
-						newSource := strings.Split(sourceValue, "?ref=")[0] + "?ref=" + latestVersion
-						block.Body().SetAttributeRaw("source", hclwrite.TokensForIdentifier(newSource))
-						log.Printf("Updated source attribute for module '%s' to version '%s'", moduleName, latestVersion)
+						// Update the ref in the source attribute, preserving the "v" prefix
+						newSource := strings.Split(sourceValue, "?ref=")[0] + "?ref=v" + latestVersion
+
+						// Manually construct the tokens for the source attribute
+						sourceTokens := hclwrite.Tokens{
+							{Type: hclsyntax.TokenStringLit, Bytes: []byte(newSource)},
+							{Type: hclsyntax.TokenCQuote, Bytes: []byte(`"`)},
+						}
+
+						// Replace the source attribute with the new tokens
+						block.Body().SetAttributeRaw("source", sourceTokens)
+						log.Printf("Updated source attribute for module '%s' to version 'v%s'", moduleName, latestVersion)
 					} else if strings.HasPrefix(sourceValue, "git@") || strings.HasPrefix(sourceValue, "ssh://") {
-						// If the source is a Git URL without a ref, add the ref parameter
-						newSource := sourceValue + "?ref=" + latestVersion
-						block.Body().SetAttributeRaw("source", hclwrite.TokensForIdentifier(newSource))
+						// If the source is a Git URL without a ref, add the ref parameter with the "v" prefix
+						newSource := sourceValue + "?ref=v" + latestVersion
+
+						// Manually construct the tokens for the source attribute
+						sourceTokens := hclwrite.Tokens{
+							{Type: hclsyntax.TokenStringLit, Bytes: []byte(newSource)},
+							{Type: hclsyntax.TokenCQuote, Bytes: []byte(`"`)},
+						}
+
+						// Replace the source attribute with the new tokens
+						block.Body().SetAttributeRaw("source", sourceTokens)
 						log.Printf("Added ref to source attribute for module '%s': %s", moduleName, newSource)
 					}
 				}
