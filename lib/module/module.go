@@ -137,17 +137,18 @@ func UpdateModuleVersions(filename string, latestVersions map[string]string) err
 				sourceAttr := block.Body().GetAttribute("source")
 				if sourceAttr != nil {
 					// Get the source value as a string
-					sourceValue := string(sourceAttr.Expr().BuildTokens(nil).Bytes())
+					sourceTokens := sourceAttr.Expr().BuildTokens(nil)
+					sourceValue := string(sourceTokens.Bytes())
 
 					if strings.Contains(sourceValue, "?ref=") {
 						// Update the ref in the source attribute
 						newSource := strings.Split(sourceValue, "?ref=")[0] + "?ref=" + latestVersion
-						block.Body().SetAttributeValue("source", cty.StringVal(newSource))
+						block.Body().SetAttributeRaw("source", hclwrite.TokensForIdentifier(newSource))
 						log.Printf("Updated source attribute for module '%s' to version '%s'", moduleName, latestVersion)
 					} else if strings.HasPrefix(sourceValue, "git@") || strings.HasPrefix(sourceValue, "ssh://") {
 						// If the source is a Git URL without a ref, add the ref parameter
 						newSource := sourceValue + "?ref=" + latestVersion
-						block.Body().SetAttributeValue("source", cty.StringVal(newSource))
+						block.Body().SetAttributeRaw("source", hclwrite.TokensForIdentifier(newSource))
 						log.Printf("Added ref to source attribute for module '%s': %s", moduleName, newSource)
 					}
 				}
