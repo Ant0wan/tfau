@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -104,7 +105,7 @@ func Extract(content *hcl.BodyContent) (map[string]map[string]string, error) {
 }
 
 // UpdateModuleVersions updates the module versions in the HCL content and writes it back to the file.
-// It only updates the version if the version attribute already exists in the module block.
+// It updates both the version attribute and the ref parameter in the source attribute.
 func UpdateModuleVersions(filename string, latestVersions map[string]string) error {
 	// Read the file content
 	src, err := ioutil.ReadFile(filename)
@@ -127,13 +128,46 @@ func UpdateModuleVersions(filename string, latestVersions map[string]string) err
 
 			// Check if the module has a latest version
 			if latestVersion, exists := latestVersions[moduleName]; exists {
-				// Check if the version attribute already exists in the module block
+				// Update the version attribute if it exists
 				if attr := block.Body().GetAttribute("version"); attr != nil {
 					log.Printf("Updating module '%s' to version '%s'", moduleName, latestVersion)
-					// Update the version attribute in the module block
 					block.Body().SetAttributeValue("version", cty.StringVal(latestVersion))
-				} else {
-					log.Printf("Module '%s' does not have a version attribute. Skipping update.", moduleName)
+				}
+
+				// Update the ref parameter in the source attribute if it exists
+				sourceAttr := block.Body().GetAttribute("source")
+				if sourceAttr != nil {
+					// Get the source value as a string
+					sourceTokens := sourceAttr.Expr().BuildTokens(nil)
+					sourceValue := string(sourceTokens.Bytes())
+
+					if strings.Contains(sourceValue, "?ref=") {
+						// Update the ref in the source attribute, preserving the "v" prefix
+						newSource := strings.Split(sourceValue, "?ref=")[0] + "?ref=v" + latestVersion
+
+						// Manually construct the tokens for the source attribute
+						sourceTokens := hclwrite.Tokens{
+							{Type: hclsyntax.TokenStringLit, Bytes: []byte(newSource)},
+							{Type: hclsyntax.TokenCQuote, Bytes: []byte(`"`)},
+						}
+
+						// Replace the source attribute with the new tokens
+						block.Body().SetAttributeRaw("source", sourceTokens)
+						log.Printf("Updated source attribute for module '%s' to version 'v%s'", moduleName, latestVersion)
+					} else if strings.HasPrefix(sourceValue, "git@") || strings.HasPrefix(sourceValue, "ssh://") {
+						// If the source is a Git URL without a ref, add the ref parameter with the "v" prefix
+						newSource := sourceValue + "?ref=v" + latestVersion
+
+						// Manually construct the tokens for the source attribute
+						sourceTokens := hclwrite.Tokens{
+							{Type: hclsyntax.TokenStringLit, Bytes: []byte(newSource)},
+							{Type: hclsyntax.TokenCQuote, Bytes: []byte(`"`)},
+						}
+
+						// Replace the source attribute with the new tokens
+						block.Body().SetAttributeRaw("source", sourceTokens)
+						log.Printf("Added ref to source attribute for module '%s': %s", moduleName, newSource)
+					}
 				}
 			}
 		}
