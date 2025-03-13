@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"tfau/lib/hcl"
@@ -25,6 +27,21 @@ var (
 	terraformVersion string // Desired Terraform version
 )
 
+// findTFFiles recursively finds all .tf files in the given directory
+func findTFFiles(dir string) ([]string, error) {
+	var tfFiles []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && filepath.Ext(path) == ".tf" {
+			tfFiles = append(tfFiles, path)
+		}
+		return nil
+	})
+	return tfFiles, err
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "tfau",
 	Short: "A CLI tool to easily upgrade your Terraform modules and providers.",
@@ -33,9 +50,18 @@ tfau upgrades each provider, module, and Terraform version in place in your HCL 
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		log.Println("Files:", files)
 
-		// If no files are specified, set recursive to true
+		// If no files are specified, find all .tf files recursively
 		if len(files) == 0 {
 			recursive = true
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get current working directory: %v", err)
+			}
+			tfFiles, err := findTFFiles(cwd)
+			if err != nil {
+				return fmt.Errorf("failed to find .tf files: %v", err)
+			}
+			files = tfFiles
 		}
 		log.Println("Recursive:", recursive)
 
