@@ -25,10 +25,15 @@ This will install the `tfau` executable in your `$GOPATH/bin` directory. Make su
 ### Makefile Commands
 
 `make all` or `make build`: Builds the `tfau` executable.
+
 `make run`: Runs the `tfau` executable.
+
 `make test`: Runs the Go tests.
+
 `make install`: Builds and installs the `tfau` executable in your `$GOPATH/bin`.
+
 `make clean`: Removes the `tfau` executable.
+
 `make fclean`: Cleans the build.
 
 ## Usage
